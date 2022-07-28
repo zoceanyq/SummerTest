@@ -278,8 +278,7 @@ func ReceiveFile() {
 		s := string(buf[:n])
 		s = strings.Trim(s, "\r\n")
 		fmt.Print(s + "\n")
-		i,_:=strconv.Atoi(s)
-		if i == 0 {
+		if s == "0" {
 			fmt.Print("传输完成！\n")
 			_ = file.Close()
 			return

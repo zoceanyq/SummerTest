@@ -1,3 +1,5 @@
+//这个文件在windows上运行
+
 package main
 
 import (

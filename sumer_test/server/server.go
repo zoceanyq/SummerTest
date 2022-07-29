@@ -15,14 +15,15 @@ import (
 	"net"
 	"os"
 	"runtime"
-	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
 var listener net.Listener
 var db *sql.DB //声明一个全局的db变量
 var conn net.Conn
+var  wg sync.WaitGroup //声明一个计时器
 
 // InitMysql 初始化数据库和尝试连接数据库
 func InitMysql() (err error) {
@@ -60,7 +61,7 @@ func InsertNewDemo() {
 
 //主函数
 func main() {
-	addr := "127.0.0.1:4344"
+	addr := "0.0.0.0:4344"
 	//监听本机端口
 	listener, _ = tls.Listen("tcp", addr, encryption()) //tls.Listen("tcp", addr,encryption())
 	//net.Listen("tcp", "10.0.16.14:4445")
@@ -74,13 +75,15 @@ func listeners() {
 	fmt.Println("listen success!")
 	//等待连接
 	for {
+		wg.Add(1)
 		fmt.Println("waiting connection!")
 		conn, _ = listener.Accept() //没有收到连接请求就一直堵塞
 		fmt.Println("叮，您有新的主机上线啦！")
 		fmt.Print("主机ip为：", conn.RemoteAddr(), "\n")
 		fmt.Print("开始通信的时间为：", time.Now().Format("2006-01-02 15:04:05"))
 		fmt.Print("\n")
-		selection() //接收数据返回接受无误 进入下一个函数选择需要做的操作
+		go selection() //接收数据返回接受无误 进入下一个函数选择需要做的操作
+		wg.Wait()
 	}
 }
 
@@ -114,10 +117,16 @@ func selection() {
 			return
 		} else if s == "heartbeat" {
 			go keepAlive()
-			fmt.Print("心跳功能开启成功，请继续输入操作！\n")
+			fmt.Print("心跳功能开启成功！\n")
+			wg.Wait()
+			_=conn.Close()
+			wg.Add(1)
+			wg.Done()
+			runtime.Goexit()
 		} else {
 			fmt.Print("请重新输入需要执行的操作！\n")
 		}
+
 	}
 }
 
@@ -195,6 +204,7 @@ func keepAlive() {
 			//重连次数为3
 			if i == 3 {
 				fmt.Print("啊偶，主机掉线啦！\n")
+				wg.Done()
 				//退出该协程
 				runtime.Goexit()
 			}
@@ -271,14 +281,13 @@ func ReceiveFile() {
 		fmt.Print("开始下载文件！\n")
 		n, err := conn.Read(buf)
 		if err != nil {
-
 				fmt.Println("conn.Read err:", err)
 				return
 		}
 		s := string(buf[:n])
 		s = strings.Trim(s, "\r\n")
 		fmt.Print(s + "\n")
-		if s == "0" {
+		if s =="0"  {
 			fmt.Print("传输完成！\n")
 			_ = file.Close()
 			return

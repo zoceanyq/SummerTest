@@ -59,7 +59,7 @@ func InsertNewDemo() {
 
 //主函数
 func main() {
-	addr := "0.0.0.0:4344"
+	addr := "10.0.16.14:4344"
 	//监听本机端口
 	listener, _ = net.Listen("tcp", addr) //tls.Listen("tcp", addr,encryption())
 	//net.Listen("tcp", "10.0.16.14:4445")

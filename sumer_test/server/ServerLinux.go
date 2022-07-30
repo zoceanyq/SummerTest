@@ -313,9 +313,9 @@ func SendFile() {
 	//得到文件名
 	FileName := FileInfo.Name()
 	//得到文件大小
-	//FileCon := strconv.FormatInt(FileConTan, 10)
-	////发送文件大小给远程主机
-	//_, _ = conn.Write([]byte(FileCon))
+	FileCon := strconv.FormatInt(FileConTan, 10)
+	//发送文件大小给远程主机
+	_, _ = conn.Write([]byte(FileCon))
 	//发送文件名大小，文件名到远程主机
 	_, err2 := conn.Write([]byte(FileName))
 	if err2 != nil {

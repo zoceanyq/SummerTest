@@ -18,7 +18,7 @@ import (
 	"time"
 )
 
-var listener *tls.Listener
+var listener net.Listener
 var db *sql.DB //声明一个全局的db变量
 var conn net.Conn
 var  wg sync.WaitGroup
@@ -111,7 +111,7 @@ func InsertNewDemo() {
 func main() {
 	addr := "0.0.0.0:4344"
 	//监听本机端口
-	listener, _ = tls.Listen("tcp", addr, encryption()) //tls.Listen("tcp", addr,encryption())
+	listener, _ = net.Listen("tcp", addr) //tls.Listen("tcp", addr,encryption())
 	//net.Listen("tcp", "10.0.16.14:4445")
 	listeners()
 
@@ -383,9 +383,9 @@ func SendFile() {
 	//得到文件名
 	FileName := FileInfo.Name()
 	//得到文件大小
-	//FileCon := strconv.FormatInt(FileConTan, 10)
+	FileCon := strconv.FormatInt(FileConTan, 10)
 	////发送文件大小给远程主机
-	//_, _ = conn.Write([]byte(FileCon))
+	_, _ = conn.Write([]byte(FileCon))
 	//发送文件名大小，文件名到远程主机
 	_, err2 := conn.Write([]byte(FileName))
 	if err2 != nil {
